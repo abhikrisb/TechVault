@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Clock, AlertTriangle, CheckCircle2, XCircle, Code2, ArrowLeft, Trash2, Medal } from 'lucide-react';
+import { Trophy, Clock, AlertTriangle, CheckCircle2, XCircle, Code2, ArrowLeft, Trash2, Medal, Download, Upload } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 export default function Leaderboard({ onBack }) {
   const [entries, setEntries] = useState([]);
+  const importInputRef = useRef(null);
 
   useEffect(() => {
     loadEntries();
@@ -14,13 +15,70 @@ export default function Leaderboard({ onBack }) {
     const stored = localStorage.getItem('leaderboard');
     if (stored) {
       const data = JSON.parse(stored);
-      // Sort by correct answers (desc), then by time (asc), then by violations (asc)
-      data.sort((a, b) => {
-        if (b.summary.correct !== a.summary.correct) return b.summary.correct - a.summary.correct;
-        if (a.timeTaken.totalSeconds !== b.timeTaken.totalSeconds) return a.timeTaken.totalSeconds - b.timeTaken.totalSeconds;
-        return a.tabViolations - b.tabViolations;
+      setEntries(sortEntries(data));
+    } else {
+      setEntries([]);
+    }
+  };
+
+  const sortEntries = (data) => {
+    return [...data].sort((a, b) => {
+      if (b.summary.correct !== a.summary.correct) return b.summary.correct - a.summary.correct;
+      if (a.timeTaken.totalSeconds !== b.timeTaken.totalSeconds) return a.timeTaken.totalSeconds - b.timeTaken.totalSeconds;
+      return a.tabViolations - b.tabViolations;
+    });
+  };
+
+  const exportLeaderboard = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      entries
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `leaderboard_export_${Date.now()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
+
+  const triggerImport = () => {
+    importInputRef.current?.click();
+  };
+
+  const importLeaderboard = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const incoming = Array.isArray(parsed) ? parsed : parsed.entries;
+
+      if (!Array.isArray(incoming)) {
+        alert('Invalid file format. Please import a leaderboard JSON export.');
+        return;
+      }
+
+      const existing = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+      const mergedMap = new Map();
+
+      [...existing, ...incoming].forEach((item, idx) => {
+        const key = item.sessionDate || `${item.teamName || 'team'}-${idx}`;
+        mergedMap.set(key, item);
       });
-      setEntries(data);
+
+      const merged = sortEntries(Array.from(mergedMap.values()));
+      localStorage.setItem('leaderboard', JSON.stringify(merged));
+      setEntries(merged);
+      alert(`Imported successfully. Total entries: ${merged.length}`);
+    } catch {
+      alert('Could not import leaderboard. Please choose a valid JSON file.');
+    } finally {
+      event.target.value = '';
     }
   };
 
@@ -59,13 +117,36 @@ export default function Leaderboard({ onBack }) {
           <h1 className="font-bold text-lg tracking-tight">Tech<span className="text-brand-400 font-mono">Vault</span></h1>
         </div>
 
-        <button
-          onClick={clearLeaderboard}
-          className="flex items-center gap-2 text-gray-500 hover:text-danger-400 transition-colors text-sm"
-        >
-          <Trash2 size={16} />
-          Clear All
-        </button>
+        <div className="flex items-center gap-3">
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={importLeaderboard}
+          />
+          <button
+            onClick={triggerImport}
+            className="flex items-center gap-2 text-gray-500 hover:text-brand-400 transition-colors text-sm"
+          >
+            <Upload size={16} />
+            Import
+          </button>
+          <button
+            onClick={exportLeaderboard}
+            className="flex items-center gap-2 text-gray-500 hover:text-success-400 transition-colors text-sm"
+          >
+            <Download size={16} />
+            Export
+          </button>
+          <button
+            onClick={clearLeaderboard}
+            className="flex items-center gap-2 text-gray-500 hover:text-danger-400 transition-colors text-sm"
+          >
+            <Trash2 size={16} />
+            Clear All
+          </button>
+        </div>
       </nav>
 
       {/* Main Content */}
