@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, PlayCircle, Send, Code, TerminalSquare, Settings2, Cpu, CheckCircle2, Loader2, Users, AlertTriangle, Download, Trophy } from 'lucide-react';
 import { cn } from './utils/cn';
 
-const TOTAL_TIME = 45 * 60; // 45 minutes in seconds
+const TOTAL_TIME = 15 * 60; // 15 minutes in seconds
+const TOTAL_PROBLEMS = 2;
 const LANGUAGES = ['Python', 'JavaScript', 'Java', 'C++'];
 
 export default function App() {
@@ -38,8 +39,8 @@ export default function App() {
   const [sessionData, setSessionData] = useState(null);
 
   useEffect(() => {
-    // Initialize 3 random problems
-    const selected = getRandomProblems(3);
+    // Initialize random problems
+    const selected = getRandomProblems(TOTAL_PROBLEMS);
     setProblems(selected);
 
     // Initialize answers state with default boilerplates
@@ -158,7 +159,7 @@ export default function App() {
             <div className="bg-dark-900/50 rounded-lg p-4 border border-dark-border/50">
               <h3 className="text-sm font-semibold text-gray-300 mb-2">Session Rules:</h3>
               <ul className="text-xs text-gray-500 space-y-1">
-                <li>• You have {TOTAL_TIME / 60} minutes to solve 3 problems</li>
+                <li>• You have {TOTAL_TIME / 60} minutes to solve {TOTAL_PROBLEMS} problems</li>
                 <li>• Tab switching (Alt+Tab) will be recorded</li>
                 <li>• Your code and time will be saved at the end</li>
                 <li>• Python and JavaScript are auto-evaluated</li>
@@ -281,7 +282,7 @@ export default function App() {
           testsTotal: report[p.id]?.total || 0
         })),
         summary: {
-          totalProblems: 3,
+          totalProblems: problems.length,
           correct: Object.values(report).filter(r => r.status === 'correct').length,
           wrong: Object.values(report).filter(r => r.status === 'wrong').length,
           skipped: Object.values(report).filter(r => r.status === 'skipped').length
@@ -329,7 +330,7 @@ export default function App() {
         <div className="glass-panel flex flex-col h-full overflow-hidden flex-1 relative">
           <div className="p-4 border-b border-dark-border bg-dark-900/50 flex items-center justify-between sticky top-0 z-10">
             <div className="flex items-center gap-3">
-              <span className="text-gray-400 font-mono text-sm">Problem {currentIndex + 1} of 3</span>
+              <span className="text-gray-400 font-mono text-sm">Problem {currentIndex + 1} of {problems.length}</span>
               <span className={`text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wider ${currentProblem.difficulty === 'Easy' ? 'bg-success-900/50 text-success-400 border border-success-500/30' :
                 'bg-warning-900/50 text-warning-400 border border-warning-500/30'
                 }`}>
@@ -349,7 +350,7 @@ export default function App() {
                 <ChevronLeft size={20} />
               </button>
               <div className="flex gap-1">
-                {[0, 1, 2].map(idx => (
+                {Array.from({ length: problems.length }, (_, idx) => idx).map(idx => (
                   <div key={idx} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentIndex ? 'bg-brand-500 w-4 shadow-[0_0_8px_rgba(79,70,229,0.8)]' :
                     answers[problems[idx]?.id]?.code !== problems[idx]?.boilerplates[answers[problems[idx]?.id]?.language.toLowerCase().replace('++', 'pp')] ? 'bg-success-500/50' : 'bg-dark-600'
                     }`} />
@@ -357,10 +358,10 @@ export default function App() {
               </div>
               <button
                 onClick={() => {
-                  setCurrentIndex(prev => Math.min(2, prev + 1));
+                  setCurrentIndex(prev => Math.min(problems.length - 1, prev + 1));
                   setOutput(null);
                 }}
-                disabled={currentIndex === 2}
+                disabled={currentIndex === problems.length - 1}
                 className="p-1.5 rounded-lg hover:bg-dark-700 text-gray-400 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
               >
                 <ChevronRight size={20} />
@@ -500,10 +501,10 @@ export default function App() {
             </div>
 
             <div className="flex items-center gap-3">
-              {currentIndex < 2 && (
+              {currentIndex < problems.length - 1 && (
                 <button
                   onClick={() => {
-                    setCurrentIndex(prev => prev + 1);
+                    setCurrentIndex(prev => Math.min(problems.length - 1, prev + 1));
                     setOutput(null);
                   }}
                   className="glass-button px-6 py-2.5 text-gray-200 hover:text-white"
@@ -567,7 +568,7 @@ export default function App() {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-4 mb-8 text-left">
+              <div className="grid grid-cols-2 gap-4 mb-8 text-left">
                 {problems.map((p, idx) => {
                   const result = submissionReport[p.id];
                   const status = result?.status || 'skipped';

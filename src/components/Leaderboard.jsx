@@ -193,7 +193,7 @@ export default function Leaderboard({ onBack }) {
             </div>
             <div className="bg-dark-800/50 rounded-xl p-4 border border-dark-border text-center">
               <div className="text-3xl font-bold text-success-400">
-                {Math.round((entries.reduce((acc, e) => acc + e.summary.correct, 0) / (entries.length * 3)) * 100)}%
+                {Math.round((entries.reduce((acc, e) => acc + e.summary.correct, 0) / (entries.reduce((acc, e) => acc + (e.summary.totalProblems || 0), 0) || 1)) * 100)}%
               </div>
               <div className="text-gray-500 text-sm">Avg Success Rate</div>
             </div>
